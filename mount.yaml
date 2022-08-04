@@ -1,0 +1,12 @@
+- name: mount /mnt/nfs
+  raw: mount {{ pvc_storage }} /mnt
+  ignore_errors: true
+
+- name: Creates {{ namespace }} 
+  file:
+    path: /mnt/{{ namespace }}-{{ ocp_cluster_name }}/{{ appname }}
+    state: directory
+    mode: '0777'
+    force: yes
+    recurse: yes
+    
