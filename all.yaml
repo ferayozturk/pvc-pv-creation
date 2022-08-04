@@ -1,0 +1,192 @@
+- name: ocp check namespace exist
+  shell: |
+    curl -ks -H "Authorization: Bearer {{ pvc_creation_token }}" -H 'Accept: application/json' "{{ url }}/api/v1/namespaces" --insecure | jq -r '.items[].metadata.name' | grep -xc "{{ namespace }}" || true
+  register: check_namespace_exist
+
+- name: "Namespace does not exist - [{{ namespace }}]"
+  debug:
+    msg: "Namespace does not exist - [{{ namespace }}]"
+  when: check_namespace_exist.stdout != "1"
+
+
+- name: Sending an e-mail SMTP servers
+  become: false
+  mail:
+    host: myhost.mydomain
+    port: 25
+    sender: ansible@mydomain.tr
+    to: "{{ usermail }}"
+    subject: "PVC Creation - Smart JOB_ID [{{ job_id }}]"
+    body: |
+      Report from Your PVC Creation Request
+
+      "PVC Creation Job Result: Namespace does not exist - [{{ namespace }}] -  Cluster: [{{ ocp_cluster_name }}]" 
+  delegate_to: localhost
+  when:
+    - check_namespace_exist.stdout != "1"
+
+- name: "Namespace does not exist - [{{ namespace }}]"
+  shell: exit 5
+  when: check_namespace_exist.stdout != "1"
+
+
+- name: oc login with pvc-create_token
+  shell: oc login --token={{ pvc_creation_token }} {{ url }}
+  
+- name: ocp check sc 
+  shell: |
+    curl -k -H "Authorization: Bearer {{ pvc_creation_token }}" -H 'Accept: application/json' {{ url }}/apis/storage.k8s.io/v1/storageclasses/ovirt-csi-sc | jq .metadata.annotations[]
+  register: check_ovirt_sc
+- debug:
+    msg: " check_ovirt_sc= {{ check_ovirt_sc.stdout }} "
+
+- name: ovirt-csi-sc is disabled
+  shell: |
+    oc patch storageclass ovirt-csi-sc --type=merge -p '{"metadata": {"annotations": {"storageclass.kubernetes.io/is-default-class": "false"}}}'
+  when: check_ovirt_sc.stdout == "\"true\""
+
+  
+- name: ocp check pv exist
+  shell: |
+    curl -ks -H "Authorization: Bearer {{ pvc_creation_token }}" -H 'Accept: application/json' "{{ url }}/api/v1/persistentvolumes" --insecure | jq -r '.items[].metadata.name' | grep -xc "{{ namespace }}-{{ appname|trim }}-pv" || true
+  register: check_pv_exist
+  
+- name: "the pv is exist"
+  debug:
+    msg: "the pv is exist"
+  when: check_pv_exist.stdout == "1"
+
+
+- name: Sending an e-mail SMTP servers
+  become: false
+  mail:
+    host: smtpappv1.fw.garanti.com.tr
+    port: 25
+    sender: ansible@garanti.com.tr
+    to: "{{ usermail }}"
+    subject: "PVC Creation - Smart JOB_ID [{{ job_id }}]"
+    body: |
+      Report from Your PVC Creation Request
+
+      "PVC Creation Job Result: [{{ appname|trim }}-pvc] is already exist - Cluster: [{{ ocp_cluster_name }}]"
+  delegate_to: localhost
+  when:
+    - check_pv_exist.stdout == "1"
+
+- name: "{{ namespace }}-{{ appname|trim }}-pv already exist - Cluster: [{{ ocp_cluster_name }}]"
+  shell: exit 6
+  when: check_pv_exist.stdout == "1"
+
+
+- name: ocp check pvc exist
+  shell: |
+    curl -ks -H "Authorization: Bearer {{ pvc_creation_token }}" -H 'Accept: application/json' "{{ url }}/api/v1/namespaces/{{ namespace }}/persistentvolumeclaims" --insecure | jq -r '.items[].metadata.name' | grep -xc "{{ appname|trim }}-pvc" || true
+  register: check_pvc_exist
+  
+- name: "the pvc is exist"
+  debug:
+    msg: "the pvc is exist"
+  when: check_pvc_exist.stdout == "1"
+
+- name: "{{ appname|trim }}-pvc already exist - [{{ namespace }}] - Cluster: [{{ ocp_cluster_name }}]"
+  shell: exit 7
+  when: check_pvc_exist.stdout == "1"
+
+- name: "ocp create pv"
+  shell: |
+    curl -k \
+        -X POST \
+        -d @- \
+        -H "Authorization: Bearer {{ pvc_creation_token }}" \
+        -H 'Accept: application/json' \
+        -H 'Content-Type: application/json' \
+        {{ url }}/api/v1/persistentvolumes/ <<'EOF'
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "{{ namespace }}-{{ appname|trim }}-pv"
+      },
+      "spec": {
+        "capacity": {
+          "storage": "{{ pvc_size }}Gi"
+        },
+        "accessModes": [
+          "{{ pvc_accessmode }}"
+        ],
+        "nfs": {
+          "path": "/{{ pvc_storage_path }}/{{ namespace }}-{{ ocp_cluster_name }}/{{ appname|trim }}",
+          "server": "{{ pvc_server }}"
+        },
+        "persistentVolumeReclaimPolicy": "Retain",
+        "volumeMode": "Filesystem"
+      }
+    }
+    EOF
+  args:
+    executable: /bin/bash 
+
+- name: ocp create pvc
+  shell: |
+    curl -k \
+        -X POST \
+        -d @- \
+        -H "Authorization: Bearer {{ pvc_creation_token }}" \
+        -H 'Accept: application/json' \
+        -H 'Content-Type: application/json' \
+        {{ url }}/api/v1/namespaces/{{ namespace }}/persistentvolumeclaims <<'EOF'
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "{{ appname|trim }}-pvc",
+        "namespace": "{{ namespace }}"
+      },
+      "spec": {
+        "accessModes": [
+          "{{ pvc_accessmode }}"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "{{ pvc_size }}Gi"
+          }
+        },
+        "volumeName": "{{ namespace }}-{{ appname|trim }}-pv"
+      }
+    }
+    EOF
+  args:
+    executable: /bin/bash
+
+
+
+
+- name: ocp check pvc status
+  shell: |
+    curl -ks -H "Authorization: Bearer {{ pvc_creation_token }}" -H 'Accept: application/json' "{{ url }}/api/v1/namespaces/{{ namespace }}/persistentvolumeclaims" --insecure | jq -r '.items[].metadata.name' | grep -xc "{{ appname|trim }}-pvc" || true
+  register: check_pvc
+
+- name: "the pvc status"
+  debug:
+    msg: "the pvc has been created"
+  when: check_pvc.stdout == "1"
+
+
+
+- name: Sending an e-mail SMTP servers
+  become: false
+  mail:
+    host: myhost.domain 
+    port: 25
+    sender: ansible@mydomain.com.tr
+    to: "{{ usermail }}"
+    subject: "PVC Creation - Smart JOB_ID [{{ job_id }}]"
+    body: |
+      Report from Your PVC Creation Request
+
+      {% if ("1" == check_pvc.stdout ) %}
+      "PVC Creation Job Result is [Success]: Your pvc has been created - [{{ appname|trim }}-pvc]"
+      {% else %}
+      "PVC Creation Job Result is [FAILED]: Your pvc has not been created. Please Contact with groupmail@adress.com teams"
+      {% endif %}
+  delegate_to: localhost
