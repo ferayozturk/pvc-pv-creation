@@ -1,0 +1,30 @@
+lab:
+  hosts:
+    cluster-lab-02:
+      ansible_connection: local
+      url: "https://api.mycluster.mydomain:6443"
+      pvc_sa_token: '***'
+      cluster-lab-03:
+      ansible_connection: local
+      url: "https://api.mycluster.mydomain:6443"
+      pvc_sa_token: '*****'
+      vars:
+    namespace: oktay
+    cluster: lab
+    storage_path: NFS_lab
+    appname: feray
+    server: NFSServer_lab
+bastion:
+     hosts:
+     bastion-test-03:
+       ansible_host: **.**.**.**
+       ocp_cluster_name: myclustername
+       storage: NFSServer:/NG_FS_Path
+       cluster: ARK Openshift Bank
+     bastion-test-04:
+       ansible_host: **.**.**.**
+       ocp_cluster_name: myclustername
+       storage: NFSServer:/NG_FS_Path
+       cluster: ARK Openshift Bank
+  vars:
+    namespace: ordinaryus
