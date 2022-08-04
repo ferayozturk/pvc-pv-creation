@@ -1,0 +1,108 @@
+- name: "OCP | Project | Create PV for {{ cluster }} ARK Bank bastion environment"
+  hosts: "bastion-{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  tasks:
+  - name: mount
+    import_tasks: mount.yaml
+    when: pvc_cluster== "ARK Openshift Bank"
+
+- name: "OCP | Project | Create PV for {{ cluster }} Hosting Bank bastion environment"
+  hosts: "bastion-hosting-{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  tasks:
+  - name: mount
+    import_tasks: mount.yaml
+    when: pvc_cluster== "Hosting Openshift Bank"
+
+- name: "OCP | Project | Create PV for {{ cluster }} ARK Affi bastion environment"
+  hosts: "bastion-istirak-{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  tasks:
+  - name: mount
+    import_tasks: mount.yaml
+    when: pvc_cluster == "ARK Openshift Affi"
+
+
+- name: "OCP | Project | Create PV for {{ cluster }} Hosting Affi bastion environment"
+  hosts: "bastion-3rd-istirak-{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  tasks:
+  - name: mount
+    import_tasks: mount.yaml
+    when: pvc_cluster == "Hosting Openshift Affi"
+
+- name: "OCP | Project | Create PV for {{ cluster }} Lab bastion environment"
+  hosts: "bastion-{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  tasks:
+  - name: mount
+    import_tasks: mount.yaml
+    when: pvc_cluster == "lab"
+
+
+- name: "OCP | Project | Launch playbook for environment | lab-{{ namespace.split('-')[-1] }}"
+  hosts: "{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  vars:
+    namespace: oktay-dev
+  tasks:
+    - name: "OCP | Project | Launch playbook for environment | lab-{{ namespace.split('-')[-1] }}"
+      import_tasks: all.yaml
+      when: pvc_cluster == "lab"
+
+
+
+- name: "OCP | Project | Launch playbook for environment | Ark-{{ namespace.split('-')[-1] }}"
+  hosts: "{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  vars:
+    namespace: oktay-dev
+  tasks:
+    - name: "OCP | Project | Launch playbook for environment | Ark-{{ namespace.split('-')[-1] }}"
+      import_tasks: all.yaml
+      when: pvc_cluster == "ARK Openshift Bank"
+
+
+- name: "OCP | Project | Launch playbook for environment | Ark-Ankara-{{ namespace.split('-')[-1] }}"
+  hosts: "ank-{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  vars:
+    namespace: oktay-dev
+  tasks:
+    - name: "OCP | Project | Launch playbook for environment | Ark-Ankara-{{ namespace.split('-')[-1] }}"
+      import_tasks: all.yaml
+      when: pvc_cluster == "ARK Openshift Bank"
+
+
+- name: "OCP | Project | Launch playbook for environment | Hosting-{{ namespace.split('-')[-1] }}"
+  hosts: "hosting-{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  vars:
+    namespace: oktay-dev
+  tasks:
+    - name: "OCP | Project | Launch playbook for environment | Hosting-{{ namespace.split('-')[-1] }}"
+      import_tasks: all.yaml
+      when: pvc_cluster == "Hosting Openshift Bank"
+
+
+- name: "OCP | Project | Launch playbook for environment | istirak-{{ namespace.split('-')[-1] }}"
+  hosts: "istirak-{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  vars:
+    namespace: oktay-dev
+  tasks:
+    - name: "OCP | Project | Launch playbook for environment | istirak-{{ namespace.split('-')[-1] }}"
+      import_tasks: all.yaml
+      when: pvc_cluster == "ARK Openshift Affi"
+
+
+- name: OCP | Project | Launch playbook for environment | istirak-hosting-{{ namespace.split('-')[-1] }}"
+  hosts: "istirak-hosting-{{ namespace.split('-')[-1] }}"
+  gather_facts: no
+  vars:
+    namespace: oktay-dev
+  tasks:
+    - name: "OCP | Project | Launch playbook for environment | istirak-hosting-{{ namespace.split('-')[-1] }}"
+      import_tasks: all.yaml
+      when: pvc_cluster == "Hosting Openshift Affi"
+
